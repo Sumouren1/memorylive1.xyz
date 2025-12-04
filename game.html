@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Memory Challenge</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字体并确保全屏显示 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* 防止 iframe 出现滚动条 */
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* 黑暗背景 */
+            color: #f8fafc; /* 白色文字 */
+        }
+        #app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 自定义倒计时进度条样式 */
+        #countdown-bar {
+            transition: width 5s linear;
+        }
+        /* 确保输入框在移动设备上友好 */
+        #answer-input {
+            appearance: none;
+        }
+        /* 提升按钮的可点击区域 */
+        .btn-game {
+            min-width: 150px;
+            min-height: 48px;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div id="app-container" class="p-4 md:p-8">
+    <!-- Progress Bar Area -->
+    <div id="progress-bar" class="flex justify-center flex-wrap gap-2 mb-4">
+        <!-- 10 level boxes will be generated here by JS -->
+    </div>
+
+    <!-- Countdown Bar (Hidden, only visible during memorizing phase) -->
+    <div id="countdown-area" class="h-2 w-full bg-gray-700 rounded-full mb-6 hidden">
+        <div id="countdown-bar" class="h-2 bg-yellow-400 rounded-full" style="width: 100%;"></div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="game-content" class="flex-grow flex items-center justify-center text-center p-4">
+        <!-- Views will be switched here: intro, memorizing, input, results -->
+        
+        <!-- 1. Intro View (Default) -->
+        <div id="intro-view" class="max-w-xl">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-blue-400 mb-4">Digital Memory Challenge</h1>
+            <h2 class="text-xl md:text-2xl font-semibold mb-6">MemoryLive.xyz Exclusive Game</h2>
+            
+            <div class="text-left bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+                <h3 class="text-2xl font-bold mb-3 text-yellow-400">Game Rules</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li>🎮 Total of 10 Levels.</li>
+                    <li>⏱️ You have 5 seconds to memorize the number in each level.</li>
+                    <li>🔢 Digit Count: Level N has an N-digit number (1 to 10 digits).</li>
+                    <li>🟢 Correct: Level marker turns green and points are earned.</li>
+                    <li>🔴 Wrong: Level marker turns red.</li>
+                    <li>🏆 Scoring: Level N earns 5 x N points (Max Total: 275 points).</li>
+                    <li>🏅 Rating: A total score above 220 (80%) is considered Excellent.</li>
+                </ul>
+            </div>
+
+            <button onclick="startGame()" class="btn-game bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                Start Challenge
+            </button>
+        </div>
+
+        <!-- 2. Memorizing View (Hidden) -->
+        <div id="memorizing-view" class="hidden">
+            <p class="text-2xl font-medium text-gray-400 mb-4">Level <span id="current-level-display-memo">1</span> | Memorize this number:</p>
+            <div class="bg-gray-700 p-8 rounded-xl shadow-2xl">
+                <p id="number-display" class="text-5xl md:text-7xl font-mono font-extrabold tracking-wider text-red-400"></p>
+            </div>
+            <p id="timer-display" class="text-xl font-bold mt-4 text-yellow-500">5.0 seconds</p>
+        </div>
+
+        <!-- 3. Input View (Hidden) -->
+        <div id="input-view" class="hidden w-full max-w-sm">
+            <p class="text-2xl font-medium text-gray-400 mb-6">Enter the number for Level <span id="current-level-display-input">1</span>:</p>
+            <input type="number" id="answer-input" placeholder="Enter the number you memorized" class="w-full p-4 mb-4 text-center text-2xl font-mono text-gray-900 bg-white border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500" />
+            <p id="error-message" class="text-red-500 mb-4 hidden">Please enter a number!</p>
+            <button onclick="submitAnswer()" class="btn-game w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                Submit Answer
+            </button>
+        </div>
+
+        <!-- 4. Results View (Hidden) -->
+        <div id="results-view" class="hidden max-w-xl">
+            <h2 class="text-4xl md:text-5xl font-extrabold text-teal-400 mb-6">Challenge Complete!</h2>
+            <div class="bg-gray-800 p-8 rounded-xl shadow-2xl">
+                <!-- Max score 275 -->
+                <p class="text-2xl text-gray-300 mb-4">Your Total Score (Max 275):</p>
+                <p id="final-score-display" class="text-6xl md:text-8xl font-black text-yellow-300 mb-6"></p>
+                <p id="ranking-display" class="text-3xl font-bold text-red-500"></p>
+            </div>
+            <button onclick="window.location.reload()" class="btn-game mt-8 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                Restart Challenge
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- Game State Variables ---
+    const MAX_LEVELS = 10; // Limited to 10 levels
+    let currentLevel = 0;
+    let totalScore = 0;
+    let currentNumber = "";
+    let countdownTimer;
+    let levelResults = new Array(MAX_LEVELS).fill('pending'); // 'pending', 'correct', 'wrong'
+
+    // --- DOM Element References ---
+    const elements = {
+        intro: document.getElementById('intro-view'),
+        memorizing: document.getElementById('memorizing-view'),
+        input: document.getElementById('input-view'),
+        results: document.getElementById('results-view'),
+        progressBar: document.getElementById('progress-bar'),
+        countdownArea: document.getElementById('countdown-area'),
+        countdownBar: document.getElementById('countdown-bar'),
+        numberDisplay: document.getElementById('number-display'),
+        timerDisplay: document.getElementById('timer-display'),
+        answerInput: document.getElementById('answer-input'),
+        levelDisplayMemo: document.getElementById('current-level-display-memo'),
+        levelDisplayInput: document.getElementById('current-level-display-input'),
+        finalScoreDisplay: document.getElementById('final-score-display'),
+        rankingDisplay: document.getElementById('ranking-display'),
+        errorMessage: document.getElementById('error-message')
+    };
+
+    // --- Utility Functions ---
+
+    /**
+     * Generates a random number string of the specified length.
+     * @param {number} length - Number of digits.
+     * @returns {string} Random number string.
+     */
+    function generateRandomNumber(length) {
+        let number = '';
+        for (let i = 0; i < length; i++) {
+            // Ensure the first digit is not 0 for numbers longer than 1 digit
+            if (i === 0 && length > 1) {
+                number += Math.floor(Math.random() * 9) + 1;
+            } else {
+                number += Math.floor(Math.random() * 10);
+            }
+        }
+        return number;
+    }
+
+    /**
+     * Renders or updates the level progress bar at the top.
+     */
+    function renderProgressBar() {
+        elements.progressBar.innerHTML = ''; // Clear existing content
+        for (let i = 0; i < MAX_LEVELS; i++) {
+            const status = levelResults[i];
+            let bgColorClass = 'bg-gray-600'; // Pending color
+            if (status === 'correct') {
+                bgColorClass = 'bg-green-500';
+            } else if (status === 'wrong') {
+                bgColorClass = 'bg-red-500';
+            }
+
+            const levelBox = document.createElement('div');
+            levelBox.className = `w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg font-bold text-sm shadow-md transition-colors duration-300 ${bgColorClass}`;
+            
+            // Add special border for the current level
+            if (i === currentLevel - 1 && status === 'pending') {
+                 levelBox.classList.add('ring-4', 'ring-yellow-400', 'ring-offset-2', 'ring-offset-slate-900');
+            }
+
+            levelBox.textContent = i + 1;
+            elements.progressBar.appendChild(levelBox);
+        }
+    }
+
+    /**
+     * Switches the main view.
+     * @param {'intro'|'memorizing'|'input'|'results'} viewName 
+     */
+    function switchView(viewName) {
+        Object.values(elements).forEach(el => {
+            if (el && el.id && (el.id.endsWith('-view') || el.id.endsWith('-area'))) {
+                el.classList.add('hidden');
+            }
+        });
+
+        if (viewName === 'memorizing') {
+            elements.memorizing.classList.remove('hidden');
+            elements.countdownArea.classList.remove('hidden');
+        } else if (viewName === 'input') {
+            elements.input.classList.remove('hidden');
+            elements.countdownArea.classList.add('hidden');
+        } else if (viewName === 'results') {
+            elements.results.classList.remove('hidden');
+        } else {
+            elements.intro.classList.remove('hidden');
+        }
+    }
+
+    // --- Game Flow Functions ---
+
+    /**
+     * Starts the game, initializes state, and begins the first level.
+     */
+    function startGame() {
+        currentLevel = 1;
+        totalScore = 0;
+        levelResults.fill('pending');
+        renderProgressBar();
+        startLevel(currentLevel);
+    }
+
+    /**
+     * Starts a new level.
+     * @param {number} level - Current level number
+     */
+    function startLevel(level) {
+        if (level > MAX_LEVELS) {
+            showResults();
+            return;
+        }
+
+        // 1. Set state
+        currentLevel = level;
+        currentNumber = generateRandomNumber(level);
+        elements.answerInput.value = ''; // Clear input box
+        elements.errorMessage.classList.add('hidden'); // Hide error message
+        
+        // 2. Update UI
+        elements.levelDisplayMemo.textContent = level;
+        elements.numberDisplay.textContent = currentNumber;
+        elements.timerDisplay.textContent = '5.0 seconds';
+        renderProgressBar(); // Highlight current level
+
+        // 3. Switch to memorizing view
+        switchView('memorizing');
+
+        // 4. Start countdown
+        startCountdown();
+    }
+
+    /**
+     * Starts the 5-second countdown.
+     */
+    function startCountdown() {
+        let timeRemaining = 5.0;
+        const duration = 5000; // 5 seconds
+        
+        // Progress bar animation setup
+        elements.countdownBar.style.transition = 'none'; // Remove previous transition
+        elements.countdownBar.style.width = '100%';
+        // Force browser repaint
+        elements.countdownBar.offsetHeight; 
+        elements.countdownBar.style.transition = `width ${duration / 1000}s linear`; // Re-set transition
+        
+        // Delay to start animation, ensuring width change takes effect
+        setTimeout(() => {
+            elements.countdownBar.style.width = '0%';
+        }, 50);
+
+        // Text countdown
+        clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            timeRemaining -= 0.1;
+            if (timeRemaining <= 0) {
+                clearInterval(countdownTimer);
+                elements.timerDisplay.textContent = 'Time Up!';
+                showInput();
+            } else {
+                elements.timerDisplay.textContent = `${timeRemaining.toFixed(1)} seconds`;
+            }
+        }, 100);
+
+        // Final timeout protection
+        setTimeout(() => {
+            clearInterval(countdownTimer);
+            showInput();
+        }, duration + 100);
+    }
+
+    /**
+     * Memorization time is over, switch to input view.
+     */
+    function showInput() {
+        switchView('input');
+        elements.levelDisplayInput.textContent = currentLevel;
+        // Focus input box
+        elements.answerInput.focus(); 
+    }
+
+    /**
+     * Submits the answer and checks the result.
+     */
+    function submitAnswer() {
+        const userAnswer = elements.answerInput.value.trim();
+
+        if (userAnswer === "") {
+            elements.errorMessage.textContent = "Please enter a number!";
+            elements.errorMessage.classList.remove('hidden');
+            return;
+        }
+        
+        elements.errorMessage.classList.add('hidden');
+
+        const isCorrect = (userAnswer === currentNumber);
+        
+        // 1. Update results and score
+        if (isCorrect) {
+            levelResults[currentLevel - 1] = 'correct';
+            const scoreForLevel = currentLevel * 5;
+            totalScore += scoreForLevel;
+            console.log(`Level ${currentLevel} correct! Score: ${scoreForLevel}`);
+        } else {
+            levelResults[currentLevel - 1] = 'wrong';
+            console.log(`Level ${currentLevel} wrong! Correct answer was: ${currentNumber}`);
+        }
+
+        // 2. Update progress bar color
+        renderProgressBar();
+
+        // 3. Proceed to the next level or show results
+        setTimeout(() => {
+            startLevel(currentLevel + 1);
+        }, 1000); // Pause for 1 second to show the color change
+    }
+
+    /**
+     * Displays the final results and ranking.
+     */
+    function showResults() {
+        switchView('results');
+
+        // Calculate total score and ranking
+        elements.finalScoreDisplay.textContent = totalScore;
+        const MAX_SCORE = 275; // Total score for 10 levels
+
+        let rankingText = "";
+        let rankingColor = "text-red-500"; // Default
+
+        // Rating based on 275 max score
+        if (totalScore >= 270) { 
+            rankingText = "Mastery! Digital Memory Champion!";
+            rankingColor = "text-yellow-300";
+        } else if (totalScore >= 260) {
+            rankingText = "Outstanding! Elite Memory Skills!";
+            rankingColor = "text-lime-400";
+        } else if (totalScore >= 220) { // 80% of 275
+            rankingText = "Excellent! Your memory is very strong!";
+            rankingColor = "text-green-500";
+        } else if (totalScore >= 140) {
+            rankingText = "Good! Plenty of room for improvement!";
+            rankingColor = "text-blue-400";
+        } else {
+            rankingText = "Keep practicing! You can do better!";
+            rankingColor = "text-red-400";
+        }
+
+        elements.rankingDisplay.textContent = rankingText;
+        elements.rankingDisplay.className = `text-3xl font-bold ${rankingColor}`;
+    }
+
+    // Initialization: Render empty progress bar and show intro view
+    document.addEventListener('DOMContentLoaded', () => {
+        renderProgressBar();
+        switchView('intro');
+    });
+</script>
+
+</body>
+</html>
